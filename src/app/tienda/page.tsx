@@ -1,13 +1,33 @@
 import type { Metadata } from "next";
 import ShopView from "@/components/shop/ShopView";
-import { getLeagueBySlug, getTeamBySlug, getSeasonBySlug } from "@/lib/products";
 
 export const metadata: Metadata = {
-  title: "Catálogo de camisetas — GOLTRA",
-  description: "Busca camisetas de fútbol por liga, equipo, temporada, versión y talla.",
+  title: "Tienda — GOLTRA",
+  description: "Explora todas las camisetas de fútbol réplica: ligas, selecciones y colección retro.",
 };
 
-export default async function TiendaPage({ searchParams }: { searchParams: Promise<{ q?: string; liga?: string; equipo?: string; temporada?: string; tipo?: string }> }) {
+const leagueBySlug: Record<string, string> = {
+  "ligas-top": "Liga Dorada",
+  selecciones: "Selecciones",
+  retro: "Colección Retro",
+  ninos: "Liga Costa",
+};
+
+export default async function TiendaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ liga?: string; categoria?: string; ofertas?: string }>;
+}) {
   const params = await searchParams;
-  return <main className="bg-paper"><ShopView initialSearch={params.q} initialLeague={params.liga ? getLeagueBySlug(params.liga)?.name : undefined} initialTeam={params.equipo ? getTeamBySlug(params.equipo)?.name : undefined} initialSeason={params.temporada ? getSeasonBySlug(params.temporada) : undefined} initialType={params.tipo} /></main>;
+  const initialLeague = params.liga ? leagueBySlug[params.liga] : undefined;
+
+  return (
+    <main className="bg-paper">
+      <ShopView
+        initialLeague={initialLeague}
+        initialCategory={params.categoria}
+        initialOnSale={params.ofertas === "1"}
+      />
+    </main>
+  );
 }

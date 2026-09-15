@@ -2,12 +2,81 @@ import Link from "next/link";
 import Logo from "./Logo";
 
 const columns = [
-  { title: "Comprar", links: [{ label: "LaLiga", href: "/camisetas/laliga" }, { label: "Premier League", href: "/camisetas/premier-league" }, { label: "Bundesliga", href: "/camisetas/bundesliga" }, { label: "Retro", href: "/tienda?tipo=Retro" }] },
-  { title: "Explorar", links: [{ label: "Todos los equipos", href: "/tienda" }, { label: "GOLTRA", href: "/nosotros" }, { label: "Contacto", href: "/contacto" }] },
+  {
+    title: "Comprar",
+    links: [
+      { label: "Ligas Top", href: "/tienda?liga=ligas-top" },
+      { label: "Selecciones", href: "/tienda?liga=selecciones" },
+      { label: "Colección Retro", href: "/tienda?categoria=Retro" },
+      { label: "Niños", href: "/tienda?liga=ninos" },
+      { label: "Ofertas", href: "/tienda?ofertas=1" },
+    ],
+  },
+  {
+    title: "Ayuda",
+    links: [
+      { label: "Guía de tallas", href: "#" },
+      { label: "Envíos y plazos", href: "#" },
+      { label: "Devoluciones", href: "#" },
+      { label: "Preguntas frecuentes", href: "#" },
+      { label: "Contacto", href: "/contacto" },
+    ],
+  },
+  {
+    title: "Goltra",
+    links: [
+      { label: "Sobre nosotros", href: "/nosotros" },
+      { label: "Calidad y materiales", href: "/nosotros#calidad" },
+      { label: "Blog", href: "#" },
+      { label: "Trabaja con nosotros", href: "#" },
+    ],
+  },
 ];
 
 export default function Footer() {
   return (
-    <footer className="bg-ink text-paper"><div className="mx-auto max-w-7xl px-5 py-14 sm:px-8"><div className="grid gap-10 border-b border-paper/10 pb-12 md:grid-cols-[1.5fr_1fr_1fr]"><div><Logo /><p className="mt-4 max-w-sm text-sm leading-relaxed text-paper/52">El hogar de todas las camisetas de fútbol. Catálogo actual y retro organizado por liga, equipo y temporada.</p><Link href="https://instagram.com/goltra_shop" target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-full border border-paper/15 px-4 py-2 text-xs font-bold text-paper/65 transition hover:border-volt hover:text-volt">Instagram · @goltra_shop ↗</Link></div>{columns.map((column) => <div key={column.title}><h3 className="font-display text-lg tracking-wide text-volt">{column.title}</h3><ul className="mt-4 space-y-2.5">{column.links.map((link) => <li key={link.label}><Link href={link.href} className="text-sm text-paper/58 transition hover:text-white">{link.label}</Link></li>)}</ul></div>)}</div><div className="flex flex-col gap-2 pt-6 text-[11px] text-paper/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} GOLTRA.</p><p>Storefront en desarrollo · catálogo demo preparado para conectar backend.</p></div></div></footer>
+    <footer className="bg-ink text-paper">
+      <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
+        <div className="grid grid-cols-1 gap-10 border-b border-paper/10 pb-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div>
+            <Logo />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-paper/60">
+              Réplicas premium de camisetas de fútbol de clubes, selecciones y colecciones retro.
+              Pasión por el fútbol, obsesión por el detalle.
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              {["IG", "TW", "TT", "FB"].map((s) => (
+                <span
+                  key={s}
+                  className="grid h-9 w-9 place-items-center rounded-full border border-paper/15 text-xs font-semibold text-paper/70 transition hover:border-volt hover:text-volt"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {columns.map((col) => (
+            <div key={col.title}>
+              <h4 className="font-display text-lg tracking-wide text-volt">{col.title}</h4>
+              <ul className="mt-4 space-y-2.5">
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    <Link href={link.href} className="text-sm text-paper/65 transition hover:text-paper">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col items-center justify-between gap-4 pt-6 text-xs text-paper/45 sm:flex-row">
+          <p>© {new Date().getFullYear()} Goltra Sports S.L. Todos los derechos reservados.</p>
+          <p>Producto de diseño — camisetas réplica no oficiales de uso demostrativo.</p>
+        </div>
+      </div>
+    </footer>
   );
 }

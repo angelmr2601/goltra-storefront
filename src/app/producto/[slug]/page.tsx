@@ -1,10 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import ProductCard from "@/components/ProductCard";
 import Gallery from "@/components/product/Gallery";
-import ProductTabs from "@/components/product/ProductTabs";
 import PurchasePanel from "@/components/product/PurchasePanel";
-import { getProductBySlug, getRelatedProducts } from "@/lib/products";
+import ProductTabs from "@/components/product/ProductTabs";
+import { getProductBySlug, getRelatedProducts, products } from "@/lib/products";
+
+export function generateStaticParams() {
+  return products.map((p) => ({ slug: p.slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const product = getProductBySlug(slug);
+  if (!product) return { title: "Producto no encontrado — GOLTRA" };
+  return { title: `${product.name} — GOLTRA`, description: product.description };
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -15,20 +27,27 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <main className="bg-paper">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
-        <nav className="mb-6 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-ink/35"><Link href="/">Inicio</Link><span>/</span><Link href={`/camisetas/${product.leagueSlug}`}>{product.league}</Link><span>/</span><Link href={`/camisetas/${product.leagueSlug}/${product.teamSlug}`}>{product.team}</Link><span>/</span><span className="text-ink">{product.season}</span></nav>
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:gap-14">
-          <Gallery product={product} />
-          <div className="lg:pt-3">
-            <div className="flex flex-wrap gap-2"><span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-ink/50">{product.league}</span><span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-ink/50">{product.season}</span>{product.badge && <span className="rounded-full bg-volt px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-ink">{product.badge}</span>}</div>
-            <h1 className="mt-4 font-display text-5xl leading-[.95] tracking-wide text-ink sm:text-6xl">{product.team}</h1>
-            <p className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-ink/42">{product.kitType} · {product.season}</p>
-            <p className="mt-5 max-w-xl text-sm leading-relaxed text-ink/58">{product.description}</p>
-            <div className="my-7 border-t border-ink/10" />
-            <PurchasePanel product={product} />
+        <div className="mb-6 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink/45">
+          <Link href="/" className="hover:text-ink">Inicio</Link><span>/</span><Link href="/tienda" className="hover:text-ink">Tienda</Link><span>/</span><span className="text-ink">{product.name}</span>
+        </div>
+
+        <div className="grid gap-10 lg:grid-cols-2">
+          <Gallery images={product.gallery} name={product.name} />
+          <div>
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-flame">{product.league} · {product.season}</span>
+            <h1 className="mt-2 font-display text-4xl leading-tight tracking-wide text-ink sm:text-5xl">{product.name}</h1>
+            <div className="mt-3 flex items-center gap-3 text-sm"><span className="text-gold">★★★★★</span><span className="text-ink/60">{product.rating} · {product.reviews} opiniones</span><span className="rounded-full bg-paper-dark px-3 py-1 text-xs font-bold uppercase text-ink/60">{product.category}</span></div>
+            <div className="mt-5 flex items-center gap-3"><span className="font-display text-4xl tracking-wide text-ink">{product.price.toFixed(2)}€</span>{product.oldPrice && <span className="text-lg text-ink/40 line-through">{product.oldPrice.toFixed(2)}€</span>}{product.oldPrice && <span className="rounded-full bg-flame px-2.5 py-1 text-xs font-bold text-white">Ahorras {(product.oldPrice - product.price).toFixed(2)}€</span>}</div>
+            <p className="mt-1 text-xs text-ink/50">IVA incluido. Envío calculado en el checkout.</p>
+            <div className="mt-8 border-t border-ink/10 pt-8"><PurchasePanel colors={product.colors} /></div>
+            <div className="mt-8 grid grid-cols-1 gap-3 border-t border-ink/10 pt-6 sm:grid-cols-3">
+              {[["🚚", "Envío 24-48h"],["🔒", "Pago 100% seguro"],["↩️", "30 días para devolver"]].map(([icon, text]) => <div key={text} className="flex items-center gap-2 text-xs font-semibold text-ink/65"><span>{icon}</span>{text}</div>)}
+            </div>
           </div>
         </div>
-        <div className="mt-14"><ProductTabs product={product} /></div>
-        <section className="mt-16 border-t border-ink/10 pt-12"><div className="mb-6 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-flame">Sigue buscando</p><h2 className="mt-2 font-display text-4xl tracking-wide">También te puede interesar</h2></div><Link href={`/camisetas/${product.leagueSlug}/${product.teamSlug}`} className="hidden text-xs font-bold uppercase tracking-wide text-ink/50 sm:block">Ver {product.team} →</Link></div><div className="grid grid-cols-2 gap-4 md:grid-cols-4">{related.map((item) => <ProductCard key={item.slug} product={item} />)}</div></section>
+
+        <div className="mt-16"><ProductTabs product={product} /></div>
+        {related.length > 0 && <div className="mt-16"><h2 className="mb-6 font-display text-3xl tracking-wide text-ink">También te puede gustar</h2><div className="grid grid-cols-2 gap-4 sm:grid-cols-4">{related.map((p) => <ProductCard key={p.slug} product={p} />)}</div></div>}
       </div>
     </main>
   );

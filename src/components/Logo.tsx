@@ -2,50 +2,22 @@ import Image from "next/image";
 
 type LogoProps = {
   className?: string;
-  imageClassName?: string;
   iconOnly?: boolean;
-  framed?: boolean;
   variant?: "dark" | "light";
-  priority?: boolean;
 };
 
-export default function Logo({
-  className = "",
-  imageClassName = "",
-  iconOnly = false,
-  framed = false,
-  variant = "light",
-  priority = false,
-}: LogoProps) {
-  const src = framed
-    ? "/brand/goltra-framed.svg"
-    : iconOnly
-      ? "/brand/goltra-mark.svg"
-      : "/brand/goltra-wordmark.svg";
-
-  const dimensions = framed
-    ? { width: 300, height: 304 }
-    : iconOnly
-      ? { width: 61, height: 40 }
-      : { width: 214, height: 32 };
-
-  const defaultSize = framed
-    ? "w-full h-auto"
-    : iconOnly
-      ? "h-7 w-auto"
-      : "h-7 w-auto sm:h-8";
+export default function Logo({ className = "", iconOnly = false, variant = "light" }: LogoProps) {
+  const src = iconOnly ? "/brand/goltra-mark.svg" : "/brand/goltra-wordmark.svg";
 
   return (
     <span className={`inline-flex items-center ${className}`}>
       <Image
         src={src}
         alt="GOLTRA"
-        width={dimensions.width}
-        height={dimensions.height}
-        priority={priority}
-        className={`${defaultSize} ${
-          variant === "light" ? "brightness-0 invert" : "brightness-0"
-        } ${imageClassName}`}
+        width={iconOnly ? 100 : 1243}
+        height={iconOnly ? 70 : 186}
+        className={`${iconOnly ? "h-7 w-auto" : "h-[22px] w-auto"} ${variant === "light" ? "brightness-0 invert" : "brightness-0"}`}
+        priority
       />
     </span>
   );

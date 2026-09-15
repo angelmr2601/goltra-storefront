@@ -1,36 +1,12 @@
+import Image from "next/image";
 import type { Metadata } from "next";
-import Link from "next/link";
-import Logo from "@/components/Logo";
+import TrustBadges from "@/components/TrustBadges";
 import Newsletter from "@/components/Newsletter";
 
-export const metadata: Metadata = { title: "GOLTRA — Sobre la marca", description: "Goltra es el hogar de todas las camisetas de fútbol." };
-
-const principles = [
-  { n: "01", title: "Encontrar antes que navegar", text: "La tienda se organiza por cómo busca un aficionado: liga, equipo y temporada." },
-  { n: "02", title: "Actual + retro", text: "Las novedades conviven con camisetas de otras épocas sin mezclar categorías ni obligarte a rebuscar." },
-  { n: "03", title: "Configurable", text: "Versión, talla, personalización y parches se resuelven dentro de la ficha de cada camiseta." },
-];
+export const metadata: Metadata = { title: "Sobre nosotros — GOLTRA", description: "Conoce la historia, los valores y el proceso de calidad detrás de GOLTRA." };
+const stats = [{ value: "+50.000", label: "Camisetas enviadas" }, { value: "120+", label: "Clubes y selecciones" }, { value: "4.8/5", label: "Valoración media" }, { value: "30 países", label: "Envíos internacionales" }];
+const values = [{ title: "Calidad obsesiva", text: "Cada lote pasa un control de costuras, tejido y bordado antes de salir del taller." }, { title: "Pasión por el fútbol", text: "Somos aficionados antes que vendedores. Elegimos cada equipación pensando en la afición." }, { title: "Envíos rápidos", text: "Trabajamos con logística exprés para que tu camiseta llegue lista para el próximo partido." }];
 
 export default function NosotrosPage() {
-  return (
-    <main className="bg-paper">
-      <section className="overflow-hidden bg-ink text-white">
-        <div className="mx-auto grid max-w-7xl gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[1fr_300px] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-volt">La idea detrás de GOLTRA</p>
-            <h1 className="mt-4 max-w-4xl font-display text-6xl leading-[.9] tracking-wide sm:text-7xl">El hogar de todas las camisetas de fútbol.</h1>
-            <p className="mt-6 max-w-2xl text-sm leading-relaxed text-paper/60">Una tienda construida alrededor de las camisetas, no alrededor de menús interminables. El objetivo es que si buscas una del Betis del año 2000, puedas llegar a ella en pocos pasos.</p>
-          </div>
-          <div className="flex justify-center lg:justify-end">
-            <Logo framed priority imageClassName="w-48 sm:w-56 lg:w-[280px]" className="opacity-90" />
-          </div>
-        </div>
-      </section>
-      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-        <div className="grid gap-5 md:grid-cols-3">{principles.map((item) => <article key={item.n} className="rounded-3xl border border-ink/10 bg-white p-7"><span className="font-display text-3xl text-volt-dark">{item.n}</span><h2 className="mt-8 font-display text-3xl leading-none tracking-wide text-ink">{item.title}</h2><p className="mt-3 text-sm leading-relaxed text-ink/55">{item.text}</p></article>)}</div>
-        <div className="mt-14 rounded-[2rem] bg-volt p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[0.16em] text-ink/45">La prioridad ahora</p><div className="mt-3 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end"><h2 className="max-w-3xl font-display text-5xl leading-[.95] tracking-wide text-ink">Catálogo y producto primero. Carrito, pagos y operaciones después.</h2><Link href="/tienda" className="w-fit rounded-full bg-ink px-7 py-3.5 text-xs font-bold uppercase tracking-wide text-white">Ver catálogo</Link></div></div>
-      </section>
-      <Newsletter />
-    </main>
-  );
+  return <main className="bg-paper"><section className="relative overflow-hidden bg-ink text-white"><div className="mx-auto max-w-5xl px-5 py-24 text-center sm:px-8"><span className="text-xs font-bold uppercase tracking-[0.2em] text-volt">Nuestra historia</span><h1 className="mt-3 font-display text-5xl tracking-wide sm:text-6xl">Nacimos en las gradas, crecimos con la afición</h1><p className="mx-auto mt-5 max-w-2xl text-base text-paper/70">GOLTRA empezó como un proyecto entre amigos aficionados al fútbol que no encontraban réplicas con la calidad que buscaban. Hoy somos una comunidad que viste sus colores con orgullo.</p></div></section><section className="mx-auto max-w-7xl px-5 py-16 sm:px-8" id="calidad"><div className="grid items-center gap-10 md:grid-cols-2"><div className="relative aspect-[4/3] overflow-hidden rounded-3xl"><Image src="/images/about-workshop.jpg" alt="Taller de confección" fill className="object-cover" /></div><div><span className="text-xs font-bold uppercase tracking-[0.2em] text-flame">Calidad y materiales</span><h2 className="mt-2 font-display text-4xl tracking-wide text-ink">Del hilo al escudo, cuidamos cada detalle</h2><p className="mt-4 text-sm leading-relaxed text-ink/65">Seleccionamos tejidos técnicos transpirables y trabajamos con talleres especializados en bordado de precisión. Antes de cada envío, un equipo de control de calidad revisa costuras, serigrafías y tallaje para garantizar la mejor experiencia posible.</p></div></div><div className="mt-16 grid grid-cols-2 gap-6 rounded-3xl bg-ink p-10 text-center text-white md:grid-cols-4">{stats.map((s) => <div key={s.label}><p className="font-display text-4xl tracking-wide text-volt">{s.value}</p><p className="mt-1 text-xs uppercase tracking-wide text-paper/60">{s.label}</p></div>)}</div><div className="mt-16 grid gap-6 md:grid-cols-3">{values.map((v) => <div key={v.title} className="rounded-2xl border border-ink/10 bg-white p-7"><h3 className="font-display text-2xl tracking-wide text-ink">{v.title}</h3><p className="mt-2 text-sm leading-relaxed text-ink/65">{v.text}</p></div>)}</div></section><TrustBadges /><Newsletter /></main>;
 }
