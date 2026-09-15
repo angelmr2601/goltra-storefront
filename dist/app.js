@@ -1,87 +1,75 @@
-const DEFAULT_PRODUCTS=[
- {id:'milan',name:'AC Milan',league:'Liga italiana',team:'AC Milan',season:'2006/2007',category:'retro',image:'milan.jpg',description:'El rojo y negro de siempre. Una camiseta ligada a una noche europea inolvidable.',active:true},
- {id:'arsenal',name:'Arsenal',league:'Liga inglesa',team:'Arsenal',season:'2003/2004',category:'retro',image:'arsenal.jpg',description:'Una historia en rojo y blanco. El recuerdo de una temporada invencible.',active:true},
- {id:'madrid',name:'Real Madrid',league:'Liga española',team:'Real Madrid',season:'2025/2026',category:'clubs',image:'madrid.jpg',description:'El blanco como identidad, en una versión limpia y contemporánea.',active:true},
- {id:'belgium',name:'Bélgica',league:'Selecciones',team:'Bélgica',season:'2026',category:'national',image:'belgium.jpg',description:'El carácter de los Red Devils en una equipación de nueva generación.',active:true},
- {id:'brazil',name:'Brasil retro',league:'Selecciones',team:'Brasil',season:'2002',category:'retro',image:'brazil.jpg',description:'El jogo bonito nunca pasa. Una de las camisetas más reconocibles del fútbol.',active:true},
- {id:'betis',name:'Real Betis',league:'Liga española',team:'Real Betis',season:'2025/2026',category:'clubs',image:'betis.jpg',description:'Verde, blanco y una forma de vivir el fútbol que se lleva dentro.',active:true},
- {id:'france',name:'Francia',league:'Selecciones',team:'Francia',season:'2024',category:'national',image:'france.jpg',description:'El azul de Les Bleus con una estética sobria y elegante.',active:true}
-];
-const PRICES={Fan:15.99,Player:18.99,Retro:18.99,'Manga larga':18.99,Infantil:18.99};
+const SUPABASE_URL='https://tmvhivwuewdoyiwgoznt.supabase.co';
+const SUPABASE_KEY='sb_publishable_sVD261fc2j0l9PGHRoil7w_jNjbx12q';
 const els=id=>document.getElementById(id);
-const load=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
-let products=load('goltra-demo-products',DEFAULT_PRODUCTS);
-let favorites=new Set(load('goltra-favorites',[]));
-let category='all',currentId=null;
-const buttons=[...document.querySelectorAll('[data-filter]')];
-const league=els('league'),team=els('team'),season=els('season'),search=els('search');
-const normalize=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-ES').trim();
-const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'es'));
-const money=value=>value.toLocaleString('es-ES',{style:'currency',currency:'EUR'});
-function save(){localStorage.setItem('goltra-demo-products',JSON.stringify(products))}
-function saveFavorites(){localStorage.setItem('goltra-favorites',JSON.stringify([...favorites]));updateFavCount()}
-function updateFavCount(){els('fav-count').textContent=favorites.size}
+const normalize=value=>(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-ES').trim();
+const unique=values=>[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+const money=value=>Number(value||0).toLocaleString('es-ES',{style:'currency',currency:'EUR'});
+const storageUrl=path=>path?`${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`:'assets/goltra-framed.png';
+const request=async(path,{method='GET',body,token,headers={}}={})=>{
+ const response=await fetch(`${SUPABASE_URL}${path}`,{method,headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${token||SUPABASE_KEY}`,...(body instanceof Blob?{}:{'Content-Type':'application/json'}),...headers},body:body instanceof Blob?body:body?JSON.stringify(body):undefined});
+ if(!response.ok){const error=await response.json().catch(()=>({message:'No se pudo completar la operación'}));throw new Error(error.message||error.error_description||`Error ${response.status}`)}
+ if(response.status===204)return null;const text=await response.text();return text?JSON.parse(text):null;
+};
+let products=[],favorites=new Set(JSON.parse(localStorage.getItem('goltra-favorites')||'[]')),category='all',currentId=null,session=JSON.parse(localStorage.getItem('goltra-admin-session')||'null');
+const buttons=[...document.querySelectorAll('[data-filter]')],league=els('league'),team=els('team'),season=els('season'),search=els('search');
+const mapProduct=p=>({...p,id:String(p.id),name:p.nombre,team:p.equipo||'Sin equipo',season:p.temporada||'Sin temporada',league:p.liga||'Sin clasificar',category:p.categoria||'clubs',description:p.descripcion||`${p.nombre}. Camiseta disponible en GOLTRA.`,image:p.imagen_path,images:[...(p.catalogo_producto_imagenes||[])].sort((a,b)=>a.orden-b.orden)});
+async function loadCatalog(admin=false){
+ try{
+  const select='*,catalogo_producto_imagenes(*)';
+  const rows=await request(`/rest/v1/catalogo_productos?select=${encodeURIComponent(select)}&order=orden.asc,nombre.asc`,{token:admin?session?.access_token:null});
+  products=(rows||[]).map(mapProduct);refresh();
+  if(admin)renderAdmin();
+ }catch(error){els('empty-results').hidden=false;els('empty-results').textContent='No hemos podido cargar el catálogo. Inténtalo de nuevo en unos segundos.';toast(error.message)}
+}
+function saveFavorites(){localStorage.setItem('goltra-favorites',JSON.stringify([...favorites]));els('fav-count').textContent=favorites.size}
 function categoryMatch(p){return category==='all'||category==='favorites'&&favorites.has(p.id)||category==='clubs'&&p.league!=='Selecciones'||category==='national'&&p.league==='Selecciones'||category==='retro'&&p.category==='retro'}
 function setOptions(el,values,placeholder){const previous=el.value;el.replaceChildren(new Option(placeholder,''));unique(values).forEach(v=>el.add(new Option(v,v)));el.value=values.includes(previous)?previous:''}
-function card(p,index){return `<article class="product-card" data-id="${p.id}"><div class="product-image-wrap"><button class="product-image" data-open="${p.id}" aria-label="Ver ${p.name}"><span class="tag">${p.category==='retro'?'RETRO CLUB':p.league==='Selecciones'?'SELECCIÓN':'CLUB'}</span><img src="assets/${p.image}" alt="Camiseta ${p.name} sobre maniquí" loading="lazy"><span class="product-arrow">↗</span></button><button class="card-heart ${favorites.has(p.id)?'saved':''}" data-favorite="${p.id}" aria-label="${favorites.has(p.id)?'Quitar de':'Añadir a'} favoritos">${favorites.has(p.id)?'♥':'♡'}</button></div><button class="product-info" data-open="${p.id}"><div><h3>${p.name}</h3><p>${p.team} · ${p.season}</p></div><span>${String(index+1).padStart(2,'0')}</span></button></article>`}
-function refresh(resetDependent=false){
- const active=products.filter(p=>p.active&&categoryMatch(p));
- if(resetDependent){league.value='';team.value='';season.value=''}
- setOptions(league,active.map(p=>p.league),'Todas las ligas');
- const byLeague=active.filter(p=>!league.value||p.league===league.value);
- setOptions(team,byLeague.map(p=>p.team),league.value==='Selecciones'?'Todos los países':'Todos los equipos');
- els('team-label').childNodes[0].textContent=league.value==='Selecciones'?'País':'Equipo';
- const byTeam=byLeague.filter(p=>!team.value||p.team===team.value);
- setOptions(season,byTeam.map(p=>p.season),'Todas las temporadas');
- const query=normalize(search.value);
- const shown=byTeam.filter(p=>(!season.value||p.season===season.value)&&(!query||normalize([p.name,p.team,p.league,p.season,p.category].join(' ')).includes(query)));
- els('products').innerHTML=shown.map(card).join('');
- els('result-count').textContent=`${shown.length} ${shown.length===1?'camiseta':'camisetas'}${query?` para “${search.value.trim()}”`:''}`;
- els('empty-results').hidden=shown.length>0;
- buttons.forEach(b=>{const on=b.dataset.filter===category;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
- els('clear-filters').disabled=category==='all'&&!league.value&&!team.value&&!season.value&&!query;
- bindCards();
+function imageFor(p){return storageUrl(p.image||p.images.find(i=>i.es_principal)?.imagen_path||p.images[0]?.imagen_path)}
+function card(p,index){return `<article class="product-card" data-id="${p.id}"><div class="product-image-wrap"><button class="product-image" data-open="${p.id}" aria-label="Ver ${p.name}"><span class="tag">${p.category==='retro'?'RETRO CLUB':p.league==='Selecciones'?'SELECCIÓN':'CLUB'}</span><img src="${imageFor(p)}" alt="Camiseta ${p.name}" loading="lazy"><span class="product-arrow">↗</span></button><button class="card-heart ${favorites.has(p.id)?'saved':''}" data-favorite="${p.id}" aria-label="${favorites.has(p.id)?'Quitar de':'Añadir a'} favoritos">${favorites.has(p.id)?'♥':'♡'}</button></div><button class="product-info" data-open="${p.id}"><div><h3>${p.name}</h3><p>${p.team} · ${p.season}</p></div><span>${String(index+1).padStart(2,'0')}</span></button></article>`}
+function refresh(reset=false){
+ const base=products.filter(categoryMatch);if(reset){league.value='';team.value='';season.value=''}
+ setOptions(league,base.map(p=>p.league),'Todas las ligas');const byLeague=base.filter(p=>!league.value||p.league===league.value);
+ setOptions(team,byLeague.map(p=>p.team),league.value==='Selecciones'?'Todos los países':'Todos los equipos');els('team-label').childNodes[0].textContent=league.value==='Selecciones'?'País':'Equipo';
+ const byTeam=byLeague.filter(p=>!team.value||p.team===team.value);setOptions(season,byTeam.map(p=>p.season),'Todas las temporadas');
+ const query=normalize(search.value);const shown=byTeam.filter(p=>(!season.value||p.season===season.value)&&(!query||normalize([p.name,p.team,p.league,p.season,p.modelo,p.category].join(' ')).includes(query)));
+ els('products').innerHTML=shown.map(card).join('');els('result-count').textContent=`${shown.length} ${shown.length===1?'camiseta':'camisetas'}${query?` para “${search.value.trim()}”`:''}`;els('empty-results').hidden=shown.length>0;
+ buttons.forEach(b=>{const active=b.dataset.filter===category;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});els('clear-filters').disabled=category==='all'&&!league.value&&!team.value&&!season.value&&!query;bindCards();
 }
-function bindCards(){
- document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openProduct(b.dataset.open));
- document.querySelectorAll('[data-favorite]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleFavorite(b.dataset.favorite)});
-}
+function bindCards(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openProduct(b.dataset.open));document.querySelectorAll('[data-favorite]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleFavorite(b.dataset.favorite)})}
 function setCategory(value){category=value;refresh(true);els('coleccion').scrollIntoView({behavior:'smooth'})}
-buttons.forEach(b=>b.onclick=()=>setCategory(b.dataset.filter));
-league.onchange=()=>{team.value='';season.value='';refresh()};team.onchange=()=>{season.value='';refresh()};season.onchange=refresh;search.oninput=refresh;
-els('clear-filters').onclick=()=>{search.value='';setCategory('all')};
-els('retro-link').onclick=()=>setCategory('retro');
-els('search-trigger').onclick=()=>{els('coleccion').scrollIntoView({behavior:'smooth'});setTimeout(()=>search.focus(),450)};
-els('favorites-trigger').onclick=()=>setCategory('favorites');
+buttons.forEach(b=>b.onclick=()=>setCategory(b.dataset.filter));league.onchange=()=>{team.value='';season.value='';refresh()};team.onchange=()=>{season.value='';refresh()};season.onchange=refresh;search.oninput=refresh;
+els('clear-filters').onclick=()=>{search.value='';setCategory('all')};els('retro-link').onclick=()=>setCategory('retro');els('search-trigger').onclick=()=>{els('coleccion').scrollIntoView({behavior:'smooth'});setTimeout(()=>search.focus(),450)};els('favorites-trigger').onclick=()=>setCategory('favorites');
 document.querySelectorAll('[data-quick-league]').forEach(b=>b.onclick=()=>{category='all';refresh(true);league.value=b.dataset.quickLeague;refresh();els('coleccion').scrollIntoView({behavior:'smooth'})});
-function toggleFavorite(id){
- favorites.has(id)?favorites.delete(id):favorites.add(id);saveFavorites();refresh();
- if(currentId===id)updateDialogFavorite();
- toast(favorites.has(id)?'Guardada en favoritos':'Eliminada de favoritos');
-}
+function toggleFavorite(id){favorites.has(id)?favorites.delete(id):favorites.add(id);saveFavorites();refresh();if(currentId===id)updateDialogFavorite();toast(favorites.has(id)?'Guardada en favoritos':'Eliminada de favoritos')}
 function updateDialogFavorite(){const saved=favorites.has(currentId);els('detail-favorite').textContent=saved?'♥':'♡';els('detail-favorite').classList.toggle('saved',saved)}
+function productImages(p){const list=p.images.map(i=>i.imagen_path);if(p.image&&!list.includes(p.image))list.unshift(p.image);return list.length?list:[null]}
+function selectDetailImage(path,p){els('detail-image').src=storageUrl(path);els('detail-image').alt=`Camiseta ${p.name}`;document.querySelectorAll('[data-detail-image]').forEach(b=>b.classList.toggle('active',b.dataset.detailImage===(path||'')))}
 function openProduct(id){
- const p=products.find(x=>x.id===id);if(!p)return;currentId=id;
- els('detail-title').textContent=p.name;els('detail-meta').textContent=`${p.league} · ${p.team} · ${p.season}`;els('detail-description').textContent=p.description;
- els('detail-image').src=`assets/${p.image}`;els('detail-image').alt=`Camiseta ${p.name}`;els('detail-version').value=p.category==='retro'?'Retro':'Fan';
- els('detail-size').value='M';els('detail-custom').checked=false;els('detail-patches').checked=false;els('personal-fields').hidden=true;els('custom-name').value='';els('custom-number').value='';
- updatePrice();updateDialogFavorite();els('product-dialog').showModal();
+ const p=products.find(x=>x.id===id);if(!p)return;currentId=id;els('detail-title').textContent=p.name;els('detail-meta').textContent=`${p.league} · ${p.team} · ${p.season}`;els('detail-description').textContent=p.description;
+ const images=productImages(p);els('detail-thumbs').innerHTML=images.length>1?images.map((path,i)=>`<button data-detail-image="${path||''}" class="${i===0?'active':''}"><img src="${storageUrl(path)}" alt="Vista ${i+1} de ${p.name}"></button>`).join(''):'';document.querySelectorAll('[data-detail-image]').forEach(b=>b.onclick=()=>selectDetailImage(b.dataset.detailImage||null,p));selectDetailImage(images[0],p);
+ els('detail-version').value=p.category==='retro'?'Retro':'Fan';els('detail-size').value='M';els('detail-custom').checked=false;els('detail-patches').checked=false;els('personal-fields').hidden=true;els('custom-name').value='';els('custom-number').value='';updatePrice();updateDialogFavorite();els('product-dialog').showModal();
 }
-function updatePrice(){const total=PRICES[els('detail-version').value]+(els('detail-custom').checked?2:0)+(els('detail-patches').checked?2:0);els('detail-price').textContent=money(total);els('personal-fields').hidden=!els('detail-custom').checked}
-['detail-version','detail-custom','detail-patches'].forEach(id=>els(id).onchange=updatePrice);
-els('detail-favorite').onclick=()=>toggleFavorite(currentId);
-els('zoom-trigger').onclick=()=>{els('zoom-image').src=els('detail-image').src;els('zoom-image').alt=els('detail-image').alt;els('image-dialog').showModal()};
-els('interest-button').onclick=()=>{const p=products.find(x=>x.id===currentId);const text=[`Hola, me interesa la camiseta ${p.name} (${p.season})`,`Versión: ${els('detail-version').value}`,`Talla: ${els('detail-size').value}`,els('detail-custom').checked?`Personalización: ${els('custom-name').value||'por concretar'} ${els('custom-number').value||''}`:'Sin personalización',els('detail-patches').checked?'Con parches':'Sin parches',`Precio mostrado: ${els('detail-price').textContent}`].join('\n');navigator.clipboard?.writeText(text);window.open('https://www.instagram.com/goltra_shop/','_blank','noopener');toast('Selección copiada. Pégala en el mensaje de Instagram')};
-document.querySelectorAll('dialog .close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close()}));
-function toast(message){const t=els('toast');t.textContent=message;t.classList.add('show');clearTimeout(t.timer);t.timer=setTimeout(()=>t.classList.remove('show'),2600)}
-// Catalog studio: intentionally local for this design demo.
+function updatePrice(){const p=products.find(x=>x.id===currentId);if(!p)return;const key={Fan:'precio_fan',Player:'precio_player',Retro:'precio_retro','Manga larga':'precio_manga_larga',Infantil:'precio_infantil'}[els('detail-version').value];const total=Number(p[key]||18.99)+(els('detail-custom').checked?Number(p.suplemento_personalizacion||2):0)+(els('detail-patches').checked?Number(p.suplemento_parches||2):0);els('detail-price').textContent=money(total);els('personal-fields').hidden=!els('detail-custom').checked}
+['detail-version','detail-custom','detail-patches'].forEach(id=>els(id).onchange=updatePrice);els('detail-favorite').onclick=()=>toggleFavorite(currentId);els('zoom-trigger').onclick=()=>{els('zoom-image').src=els('detail-image').src;els('zoom-image').alt=els('detail-image').alt;els('image-dialog').showModal()};
+els('interest-button').onclick=()=>{const p=products.find(x=>x.id===currentId);const text=[`Hola, me interesa la camiseta ${p.name} (${p.season})`,`Versión: ${els('detail-version').value}`,`Talla: ${els('detail-size').value}`,els('detail-custom').checked?`Personalización: ${els('custom-name').value||'por concretar'} ${els('custom-number').value||''}`:'Sin personalización',els('detail-patches').checked?'Con parches':'Sin parches',`Precio mostrado: ${els('detail-price').textContent}`].join('\n');navigator.clipboard?.writeText(text);window.open('https://www.instagram.com/goltra_shop/','_blank','noopener');toast('Selección copiada. Pégala en Instagram')};
+document.querySelectorAll('dialog .close').forEach(b=>b.onclick=()=>b.closest('dialog').close());document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close()}));
+function toast(message){const t=els('toast');t.textContent=message;t.classList.add('show');clearTimeout(t.timer);t.timer=setTimeout(()=>t.classList.remove('show'),2800)}
+
+// Shared administrative catalog.
 const admin=els('admin-dialog'),form=els('product-form');
-els('admin-trigger').onclick=()=>{renderAdmin();admin.showModal()};
-function renderAdmin(){els('admin-list').innerHTML=products.map(p=>`<div class="admin-row"><img src="assets/${p.image}" alt=""><div><strong>${p.name}</strong><small>${p.team} · ${p.season}</small></div><span class="visibility">${p.active?'Visible':'Oculta'}</span><button data-edit="${p.id}">Editar</button></div>`).join('');document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editProduct(b.dataset.edit))}
-function editProduct(id){const p=products.find(x=>x.id===id);els('admin-id').value=p.id;els('admin-name').value=p.name;els('admin-league').value=p.league;els('admin-team').value=p.team;els('admin-season').value=p.season;els('admin-category').value=p.category;els('admin-description').value=p.description;els('admin-image').value=p.image;els('admin-active').checked=p.active;form.scrollIntoView({behavior:'smooth'})}
-function resetForm(){form.reset();els('admin-id').value='';els('admin-active').checked=true}
-els('cancel-edit').onclick=resetForm;
-form.onsubmit=e=>{e.preventDefault();const id=els('admin-id').value||`custom-${Date.now()}`;const item={id,name:els('admin-name').value.trim(),league:els('admin-league').value,team:els('admin-team').value.trim(),season:els('admin-season').value.trim(),category:els('admin-category').value,image:els('admin-image').value,description:els('admin-description').value.trim()||'Una camiseta para llevar tu pasión.',active:els('admin-active').checked};const pos=products.findIndex(p=>p.id===id);pos>=0?products.splice(pos,1,item):products.unshift(item);save();resetForm();renderAdmin();refresh();toast('Catálogo de demo actualizado')};
-els('reset-catalog').onclick=()=>{products=structuredClone(DEFAULT_PRODUCTS);save();resetForm();renderAdmin();refresh();toast('Catálogo restaurado')};
-updateFavCount();refresh();
+function setAdminState(loggedIn){els('admin-login').hidden=loggedIn;els('admin-content').hidden=!loggedIn;els('admin-signout').hidden=!loggedIn}
+async function validateSession(){if(!session?.access_token)return false;try{await request('/auth/v1/user',{token:session.access_token});return true}catch{session=null;localStorage.removeItem('goltra-admin-session');return false}}
+els('admin-trigger').onclick=async()=>{admin.showModal();const valid=await validateSession();setAdminState(valid);if(valid)await loadCatalog(true)};
+els('admin-login').onsubmit=async e=>{e.preventDefault();els('login-error').textContent='';try{session=await request('/auth/v1/token?grant_type=password',{method:'POST',body:{email:els('admin-email').value.trim(),password:els('admin-password').value}});localStorage.setItem('goltra-admin-session',JSON.stringify(session));setAdminState(true);await loadCatalog(true);toast('Sesión iniciada')}catch(error){els('login-error').textContent='No se ha podido iniciar sesión. Revisa el email y la contraseña.'}};
+els('admin-signout').onclick=async()=>{try{await request('/auth/v1/logout',{method:'POST',token:session?.access_token})}catch{}session=null;localStorage.removeItem('goltra-admin-session');setAdminState(false);toast('Sesión cerrada')};
+function renderAdmin(){const q=normalize(els('admin-search').value);const rows=products.filter(p=>!q||normalize([p.name,p.team,p.season,p.league].join(' ')).includes(q));els('admin-list').innerHTML=rows.map(p=>`<div class="admin-row"><img src="${imageFor(p)}" alt=""><div><strong>${p.name}</strong><small>${p.team} · ${p.season}</small></div><span class="visibility">${p.activo?'Visible':'Oculta'}</span><button data-edit="${p.id}">Editar</button></div>`).join('');document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editProduct(b.dataset.edit))}
+els('admin-search').oninput=renderAdmin;
+function editProduct(id){const p=products.find(x=>x.id===id);els('admin-id').value=p.id;els('admin-name').value=p.nombre;els('admin-league').value=p.liga;els('admin-team').value=p.equipo;els('admin-season').value=p.temporada;els('admin-category').value=p.categoria;els('admin-model').value=p.modelo||'';els('admin-order').value=p.orden||0;els('admin-description').value=p.descripcion||'';els('admin-price-fan').value=p.precio_fan;els('admin-price-player').value=p.precio_player;els('admin-price-retro').value=p.precio_retro;els('admin-price-child').value=p.precio_infantil;els('admin-active').checked=p.activo;els('admin-featured').checked=p.destacado;form.scrollIntoView({behavior:'smooth'})}
+function resetForm(){form.reset();els('admin-id').value='';els('admin-active').checked=true;els('admin-price-fan').value='18.99';els('admin-price-player').value='15.99';els('admin-price-retro').value='18.99';els('admin-price-child').value='18.99'}
+els('cancel-edit').onclick=resetForm;els('new-product').onclick=()=>{resetForm();form.scrollIntoView({behavior:'smooth'})};
+const slugify=value=>normalize(value).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,80);
+async function uploadImages(productId,files){
+ let cover=null;for(let i=0;i<files.length;i++){const file=files[i];if(file.size>5*1024*1024)throw new Error(`${file.name} supera los 5 MB`);const extension=(file.name.split('.').pop()||'jpg').toLowerCase();const path=`catalog/${productId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;await request(`/storage/v1/object/product-images/${path}`,{method:'POST',body:file,token:session.access_token,headers:{'Content-Type':file.type,'x-upsert':'false'}});await request('/rest/v1/catalogo_producto_imagenes',{method:'POST',body:{catalogo_producto_id:Number(productId),imagen_path:path,alt_text:els('admin-name').value.trim(),orden:i,es_principal:i===0},token:session.access_token,headers:{Prefer:'return=minimal'}});if(i===0)cover=path}return cover;
+}
+form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('[type=submit]');button.disabled=true;button.textContent='Guardando…';try{const id=els('admin-id').value;const payload={nombre:els('admin-name').value.trim(),liga:els('admin-league').value.trim(),equipo:els('admin-team').value.trim(),temporada:els('admin-season').value.trim(),categoria:els('admin-category').value,modelo:els('admin-model').value.trim(),orden:Number(els('admin-order').value||0),descripcion:els('admin-description').value.trim(),precio_fan:Number(els('admin-price-fan').value),precio_player:Number(els('admin-price-player').value),precio_retro:Number(els('admin-price-retro').value),precio_infantil:Number(els('admin-price-child').value),precio_manga_larga:18.99,suplemento_personalizacion:2,suplemento_parches:2,activo:els('admin-active').checked,destacado:els('admin-featured').checked,slug:`${slugify(els('admin-name').value)}-${id||Date.now()}`};const rows=await request(id?`/rest/v1/catalogo_productos?id=eq.${id}`:'/rest/v1/catalogo_productos',{method:id?'PATCH':'POST',body:payload,token:session.access_token,headers:{Prefer:'return=representation'}});const productId=id||rows?.[0]?.id;const files=[...els('admin-images').files];if(files.length){const cover=await uploadImages(productId,files);await request(`/rest/v1/catalogo_productos?id=eq.${productId}`,{method:'PATCH',body:{imagen_path:cover},token:session.access_token,headers:{Prefer:'return=minimal'}})}resetForm();await loadCatalog(true);toast('Catálogo compartido actualizado')}catch(error){toast(error.message)}finally{button.disabled=false;button.textContent='Guardar camiseta'}};
+saveFavorites();loadCatalog();
