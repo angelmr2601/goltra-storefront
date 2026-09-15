@@ -43,7 +43,10 @@ export default function Header() {
 
       <header className="border-b border-paper/10 bg-ink/96 text-paper backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3.5 sm:px-8">
-          <Link href="/" aria-label="Ir al inicio de GOLTRA" className="shrink-0"><Logo /></Link>
+          <Link href="/" aria-label="Ir al inicio de GOLTRA" className="shrink-0">
+            <span className="sm:hidden"><Logo iconOnly priority /></span>
+            <span className="hidden sm:block"><Logo priority /></span>
+          </Link>
 
           <nav className="hidden items-center gap-6 xl:flex">
             {nav.map((item) => (
@@ -58,7 +61,7 @@ export default function Header() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Betis 2000, Arsenal, Bundesliga…" className="w-full bg-transparent text-xs text-paper placeholder:text-paper/35 focus:outline-none" />
           </form>
 
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 md:ml-0">
             <button onClick={() => setMobileSearch((value) => !value)} aria-label="Buscar" className="grid h-9 w-9 place-items-center rounded-full text-paper/75 hover:bg-paper/10 hover:text-volt md:hidden">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" /></svg>
             </button>
